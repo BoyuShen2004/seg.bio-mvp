@@ -326,22 +326,28 @@ export async function stopModelInference() {
   }
 }
 
-export async function queryChatBot(query) {
+export async function queryChatBot(query, threadId) {
   try {
+    const payload = { query }
+    if (threadId) {
+      payload.thread_id = threadId
+    }
     const res = await axios.post(
-      `${process.env.REACT_APP_API_PROTOCOL}://${process.env.REACT_APP_API_URL}/chat/query`,
-      { query }
+      `${API_PROTOCOL}://${API_URL}/chat/query`,
+      payload
     )
-    return res.data?.response
+    return res.data
   } catch (error) {
     handleError(error)
   }
 }
 
-export async function clearChat() {
+export async function clearChat(threadId) {
   try {
+    const payload = threadId ? { thread_id: threadId } : {}
     await axios.post(
-      `${process.env.REACT_APP_API_PROTOCOL}://${process.env.REACT_APP_API_URL}/chat/clear`
+      `${API_PROTOCOL}://${API_URL}/chat/clear`,
+      payload
     )
   } catch (error) {
     handleError(error)

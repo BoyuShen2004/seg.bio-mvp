@@ -7,11 +7,18 @@ import { DEFAULT_IMAGE } from '../utils/utils'
 import UTIF from 'utif'
 
 import { getNeuroglancerViewer } from '../utils/api'
-const path = require('path')
 
 const ensureTrailingSeparator = (dirPath) => {
   if (!dirPath) return ''
-  return dirPath.endsWith(path.sep) ? dirPath : dirPath + path.sep
+  const sep = dirPath.includes('\\') ? '\\' : '/'
+  return dirPath.endsWith(sep) ? dirPath : dirPath + sep
+}
+
+const getDirname = (filePath) => {
+  if (!filePath) return ''
+  const idx = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
+  if (idx === -1) return ''
+  return filePath.slice(0, idx)
 }
 
 const getFolderPath = (uploadFile, originPath) => {
@@ -19,7 +26,7 @@ const getFolderPath = (uploadFile, originPath) => {
     return ensureTrailingSeparator(uploadFile.folderPath)
   }
   if (!originPath) return ''
-  return ensureTrailingSeparator(path.dirname(originPath))
+  return ensureTrailingSeparator(getDirname(originPath))
 }
 
 const enrichFileMetadata = (uploadFile) => {
@@ -303,7 +310,7 @@ export function Dragger() {
         file?.originFileObj?.path ||
         file?.path
       setPreviewFileFolderPath(
-        originPath ? ensureTrailingSeparator(path.dirname(originPath)) : ''
+        originPath ? ensureTrailingSeparator(getDirname(originPath)) : ''
       )
     }
   }

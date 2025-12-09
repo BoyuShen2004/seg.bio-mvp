@@ -1,7 +1,7 @@
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from services.model import (
+from server_pytc.services.model import (
     get_tensorboard,
     initialize_tensorboard,
     start_inference,

@@ -2,15 +2,16 @@ import json
 import pathlib
 import shutil
 import tempfile
+import uuid
 from typing import List, Optional
 
 import requests
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from utils.io import readVol
-from utils.utils import process_path
-from chatbot.chatbot import chain, memory
+from server_api.utils.io import readVol
+from server_api.utils.utils import process_path
+from server_api.chatbot.chatbot import handle_query, reset_chat
 
 REACT_APP_SERVER_PROTOCOL = "http"
 REACT_APP_SERVER_URL = "localhost:4243"
@@ -39,7 +40,47 @@ def save_upload_to_tempfile(upload: UploadFile) -> pathlib.Path:
 def hello():
     return {"hello"}
 
+PYTC_WORKER_URL = "http://localhost:4243"
 
+@app.post("/segment")
+async def segment(req: Request):
+    """
+    Forward segmentation pipeline to PyTC worker.
+    Expected payload:
+    {
+        "pipeline": {...},
+        "input_path": "/path/to/im.h5",
+        "output_path": "/path/to/output.h5"
+    }
+    """
+    try:
+        payload = await req.json()
+
+        # Debug print
+        print("\n=== /segment endpoint called ===")
+        print("Payload keys:", list(payload.keys()))
+
+        url = f"{PYTC_WORKER_URL}/run_pipeline"
+        print("Forwarding to:", url)
+
+        response = requests.post(url, json=payload)
+
+        print("Worker response:", response.status_code)
+
+        if response.status_code != 200:
+            return {
+                "message": "Worker returned error",
+                "status": response.status_code,
+                "error": response.text,
+            }
+
+        return response.json()
+
+    except Exception as e:
+        print("[SERVER_API] Segmentation error:", e)
+        return {"error": str(e)}
+       
+        
 @app.post("/neuroglancer")
 async def neuroglancer(req: Request):
     import neuroglancer
@@ -332,24 +373,43 @@ async def check_files(req: Request):
 @app.post("/chat/query")
 async def chat_query(req: Request):
     body = await req.json()
-    query = body.get('query')
-    response = chain.invoke({'question': query})['answer']
-    return {"response": response}
+    query = body.get("query")
+    thread_id = body.get("thread_id") or str(uuid.uuid4())
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required.")
+
+    try:
+        result = handle_query(query, thread_id)
+        return result
+    except Exception as exc:
+        import traceback
+        print("[CHAT_QUERY] Error handling query:", exc)
+        print(traceback.format_exc())
+        # Return a graceful fallback instead of a 500 so the UI keeps working
+        return {
+            "response": "Sorry, the chat agent is temporarily unavailable.",
+            "thread_id": thread_id,
+        }
 
 
 @app.post("/chat/clear")
-async def clear_chat():
-    memory.clear()
+async def clear_chat(req: Request):
+    try:
+        body = await req.json()
+    except Exception:
+        body = {}
+    thread_id = body.get("thread_id")
+    reset_chat(thread_id)
+    return {"cleared": thread_id or "all"}
 
 
 def run():
     uvicorn.run(
-        "main:app",
+        "server_api.main:app",
         host="0.0.0.0",
         port=4242,
         reload=True,
         log_level="info",
-        app_dir="/",
     )
 
 

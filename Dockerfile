@@ -2,7 +2,8 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UV_PROJECT_ENV=/app/.venv
+    UV_PROJECT_ENV=/app/.venv \
+    PATH="/root/.local/bin:${PATH}"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -10,17 +11,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --install-dir /usr/local/bin
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --python 3.11
-
 COPY setup_pytorch_connectomics.sh ./setup_pytorch_connectomics.sh
 RUN chmod +x setup_pytorch_connectomics.sh && \
-    ./setup_pytorch_connectomics.sh --force && \
-    uv pip install --directory /app --editable /app/pytorch_connectomics && \
+    ./setup_pytorch_connectomics.sh --force
+
+COPY pyproject.toml ./
+RUN uv sync --no-dev --python 3.11
+RUN uv pip install --directory /app --editable /app/pytorch_connectomics && \
     rm -rf /app/pytorch_connectomics/.git
 
 COPY server_api ./server_api

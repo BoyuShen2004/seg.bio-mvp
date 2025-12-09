@@ -127,8 +127,9 @@ function Views () {
             </Layout>
             {isChatOpen ? (
               <Sider
-                width={400}
+                width={520}
                 theme='light'
+                style={{ borderLeft: '1px solid #f0f0f0', background: '#f8fafc' }}
               >
                 <Chatbot onClose={() => setIsChatOpen(false)} />
               </Sider>

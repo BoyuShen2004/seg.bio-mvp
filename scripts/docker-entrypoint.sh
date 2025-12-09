@@ -18,12 +18,14 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+export PYTHONPATH="/app"
+
 echo "Starting API server on :4242..."
-uv run --directory /app python server_api/main.py &
+uv run --directory /app python -m server_api.main &
 API_PID=$!
 
 echo "Starting PyTC server on :4243..."
-uv run --directory /app python server_pytc/main.py &
+uv run --directory /app python -m server_pytc.main &
 PYTC_PID=$!
 
 wait -n
